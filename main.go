@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 
+	"github.com/hashicorp/go-tfe"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
@@ -12,6 +14,11 @@ import (
 )
 
 func main() {
+	client, err := tfe.NewClient(nil)
+	if err != nil {
+		panic(err)
+	}
+
 	exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
 	if err != nil {
 		panic(err)
@@ -41,7 +48,31 @@ func main() {
 		panic(err)
 	}
 
-	gauge.Observe(context.TODO(), int64(1))
+	pools, err := client.AgentPools.List(context.TODO(), "takescoop", &tfe.AgentPoolListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, pool := range pools.Items {
+		agents, err := ListAgents(pool.ID)
+		if err != nil {
+			panic(err)
+		}
+
+		byStatus := make(map[string]int)
+		for _, agent := range agents {
+			byStatus[agent.Status]++
+		}
+
+		for status, count := range byStatus {
+			gauge.Observe(
+				context.TODO(),
+				int64(count),
+				attribute.String("pool", pool.Name),
+				attribute.String("status", status),
+			)
+		}
+	}
 
 	if err = pusher.Stop(context.TODO()); err != nil {
 		panic(err)
