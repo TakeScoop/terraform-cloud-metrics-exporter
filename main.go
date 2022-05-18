@@ -15,6 +15,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	client, err := tfcloud.New(nil)
 	if err != nil {
 		panic(err)
@@ -33,7 +35,7 @@ func main() {
 		controller.WithExporter(exporter),
 	)
 
-	if err = pusher.Start(context.TODO()); err != nil {
+	if err = pusher.Start(ctx); err != nil {
 		panic(err)
 	}
 
@@ -49,7 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	summary, err := agentstatus.Get(context.TODO(), client, "takescoop")
+	summary, err := agentstatus.Get(ctx, client, "takescoop")
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +59,7 @@ func main() {
 	for _, pool := range summary.Pools {
 		for status, count := range pool.ByStatus() {
 			gauge.Observe(
-				context.TODO(),
+				ctx,
 				int64(count),
 				attribute.String("pool", pool.Name),
 				attribute.String("status", status),
@@ -65,7 +67,7 @@ func main() {
 		}
 	}
 
-	if err = pusher.Stop(context.TODO()); err != nil {
+	if err = pusher.Stop(ctx); err != nil {
 		panic(err)
 	}
 }
