@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/takescoop/terraform-cloud-metrics-exporter/internal/agentstatus"
 	"github.com/takescoop/terraform-cloud-metrics-exporter/internal/tfcloud"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -48,23 +49,13 @@ func main() {
 		panic(err)
 	}
 
-	pools, err := client.ListAgentPools(context.TODO(), "takescoop")
+	summary, err := agentstatus.Get(context.TODO(), client, "takescoop")
 	if err != nil {
 		panic(err)
 	}
 
-	for _, pool := range pools {
-		agents, err := client.ListAgents(context.TODO(), pool.ID)
-		if err != nil {
-			panic(err)
-		}
-
-		byStatus := make(map[string]int)
-		for _, agent := range agents {
-			byStatus[agent.Status]++
-		}
-
-		for status, count := range byStatus {
+	for _, pool := range summary.Pools {
+		for status, count := range pool.ByStatus() {
 			gauge.Observe(
 				context.TODO(),
 				int64(count),
