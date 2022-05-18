@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/hashicorp/go-tfe"
+	"github.com/takescoop/terraform-cloud-metrics-exporter/internal/tfcloud"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/metric/global"
@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	client, err := tfe.NewClient(nil)
+	client, err := tfcloud.New(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -48,13 +48,13 @@ func main() {
 		panic(err)
 	}
 
-	pools, err := client.AgentPools.List(context.TODO(), "takescoop", &tfe.AgentPoolListOptions{})
+	pools, err := client.ListAgentPools(context.TODO(), "takescoop")
 	if err != nil {
 		panic(err)
 	}
 
-	for _, pool := range pools.Items {
-		agents, err := ListAgents(pool.ID)
+	for _, pool := range pools {
+		agents, err := client.ListAgents(context.TODO(), pool.ID)
 		if err != nil {
 			panic(err)
 		}

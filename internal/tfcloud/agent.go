@@ -1,28 +1,26 @@
-package main
+package tfcloud
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 )
 
-type Agent struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-}
-
-func ListAgents(pool string) ([]*Agent, error) {
-	url := fmt.Sprintf("https://app.terraform.io/api/v2/agent-pools/%s/agents", pool)
+// ListAgents lists the agents in a given pool
+// TODO: use go-tfe when support for this API is added
+func (c *Client) ListAgents(ctx context.Context, poolId string) ([]*Agent, error) {
+	url := fmt.Sprintf("%s%sagent-pools/%s/agents", c.config.Address, c.config.BasePath, poolId)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("TFE_TOKEN")))
+	req = req.WithContext(ctx)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.config.Token))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.config.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +29,7 @@ func ListAgents(pool string) ([]*Agent, error) {
 		return nil, fmt.Errorf("failed to list agents: %d", resp.StatusCode)
 	}
 
-	var result AgentsResponse
-
+	var result agentsResponse
 	defer resp.Body.Close()
 
 	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -42,13 +39,18 @@ func ListAgents(pool string) ([]*Agent, error) {
 	return result.Agents(), nil
 }
 
-type AgentsResponse struct {
+type Agent struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+type agentsResponse struct {
 	Data []struct {
 		Attributes *Agent `json:"attributes"`
 	} `json:"data"`
 }
 
-func (r *AgentsResponse) Agents() []*Agent {
+func (r *agentsResponse) Agents() []*Agent {
 	agents := make([]*Agent, len(r.Data))
 
 	for i, d := range r.Data {
