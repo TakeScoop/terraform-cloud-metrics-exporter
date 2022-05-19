@@ -1,73 +1,70 @@
 package main
 
 import (
-	"context"
+	"log"
+	"os"
 
-	"github.com/takescoop/terraform-cloud-metrics-exporter/internal/agentstatus"
-	"github.com/takescoop/terraform-cloud-metrics-exporter/internal/tfcloud"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"github.com/takescoop/terraform-cloud-metrics-exporter/cmd"
 )
 
 func main() {
-	ctx := context.Background()
-
-	client, err := tfcloud.New(nil)
-	if err != nil {
-		panic(err)
+	if err := cmd.Exec(os.Args[1:]); err != nil {
+		log.Fatal(err)
 	}
 
-	exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
-	if err != nil {
-		panic(err)
-	}
+	// ctx := context.Background()
 
-	pusher := controller.New(
-		processor.NewFactory(
-			simple.NewWithInexpensiveDistribution(),
-			exporter,
-		),
-		controller.WithExporter(exporter),
-	)
+	// client, err := tfcloud.New(nil)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	if err = pusher.Start(ctx); err != nil {
-		panic(err)
-	}
+	// exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	global.SetMeterProvider(pusher)
-	meter := global.Meter("terraform_cloud")
+	// pusher := controller.New(
+	// 	processor.NewFactory(
+	// 		simple.NewWithInexpensiveDistribution(),
+	// 		exporter,
+	// 	),
+	// 	controller.WithExporter(exporter),
+	// )
 
-	gauge, err := meter.AsyncInt64().Gauge(
-		"agents",
-		instrument.WithDescription("The count of Terraform Cloud agents"),
-	)
+	// if err = pusher.Start(ctx); err != nil {
+	// 	panic(err)
+	// }
 
-	if err != nil {
-		panic(err)
-	}
+	// global.SetMeterProvider(pusher)
+	// meter := global.Meter("terraform_cloud")
 
-	summary, err := agentstatus.Get(ctx, client, "takescoop")
-	if err != nil {
-		panic(err)
-	}
+	// gauge, err := meter.AsyncInt64().Gauge(
+	// 	"agents",
+	// 	instrument.WithDescription("The count of Terraform Cloud agents"),
+	// )
 
-	for _, pool := range summary.Pools {
-		for status, count := range pool.ByStatus() {
-			gauge.Observe(
-				ctx,
-				int64(count),
-				attribute.String("pool", pool.Name),
-				attribute.String("status", status),
-			)
-		}
-	}
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	if err = pusher.Stop(ctx); err != nil {
-		panic(err)
-	}
+	// summary, err := agentstatus.Get(ctx, client, "takescoop")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// for _, pool := range summary.Pools {
+	// 	for status, count := range pool.ByStatus() {
+	// 		gauge.Observe(
+	// 			ctx,
+	// 			int64(count),
+	// 			attribute.String("pool", pool.Name),
+	// 			attribute.String("status", status),
+	// 		)
+	// 	}
+	// }
+
+	// if err = pusher.Stop(ctx); err != nil {
+	// 	panic(err)
+	// }
 }
