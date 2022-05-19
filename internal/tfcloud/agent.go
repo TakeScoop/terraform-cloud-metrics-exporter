@@ -12,12 +12,11 @@ import (
 func (c *Client) ListAgents(ctx context.Context, poolId string) ([]*Agent, error) {
 	url := fmt.Sprintf("%s%sagent-pools/%s/agents", c.config.Address, c.config.BasePath, poolId)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req = req.WithContext(ctx)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.config.Token))
 
 	resp, err := c.config.HTTPClient.Do(req)
